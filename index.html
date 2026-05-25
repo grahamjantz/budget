@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BudgetDesk</title>
+
+<!-- Firebase v9 modular SDK via CDN (compat layer for simplicity) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' fill='%23c8572a'>$</text></svg>">
+<style>
+  /* ─── Design Tokens ─────────────────────────────────────── */
+  :root {
+    --bg:        #f5f2ec;
+    --surface:   #ffffff;
+    --sidebar-bg:#1a1a18;
+    --sidebar-tx:#e8e4d9;
+    --sidebar-muted: #7a7870;
+    --accent:    #c8572a;
+    --accent-lt: #f0e8e2;
+    --border:    #ddd9d0;
+    --tx:        #1a1a18;
+    --tx-muted:  #7a7870;
+    --cash-hdr:  #1e3a2f;
+    --debit-hdr: #1a2a3e;
+    --row-hover: #faf8f4;
+    --font-mono: 'DM Mono', monospace;
+    --font-serif:'Fraunces', Georgia, serif;
+    --shadow:    0 2px 12px rgba(0,0,0,0.08);
+    --radius:    6px;
+    --sidebar-w: 260px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-mono);
+    background: var(--bg);
+    color: var(--tx);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ─── Login Screen ──────────────────────────────────────── */
+  #login-screen {
+    position: fixed; inset: 0; z-index: 200;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 28px;
+    animation: fadeIn .4s ease;
+  }
+  #login-screen.hidden { display: none; }
+
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 52px 48px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    max-width: 380px; width: 90%;
+  }
+  .login-card h1 {
+    font-family: var(--font-serif);
+    font-size: 2.4rem;
+    font-weight: 600;
+    color: var(--tx);
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+  .login-card p {
+    color: var(--tx-muted);
+    font-size: .82rem;
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+  .google-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--tx);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 13px 28px;
+    font-family: var(--font-mono);
+    font-size: .85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s;
+    letter-spacing: .03em;
+  }
+  .google-btn:hover { background: #333; }
+  .google-btn svg { flex-shrink: 0; }
+
+  /* ─── Layout ────────────────────────────────────────────── */
+  #app { display: flex; width: 100%; height: 100vh; overflow: hidden; }
+
+  /* ─── Sidebar ───────────────────────────────────────────── */
+  #sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--sidebar-bg);
+    color: var(--sidebar-tx);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+  }
+  .sidebar-header h2 {
+    font-family: var(--font-serif);
+    font-size: 1.35rem;
+    font-weight: 600;
+    font-style: italic;
+    letter-spacing: -.01em;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+  .sidebar-header .user-email {
+    font-size: .7rem;
+    color: var(--sidebar-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-actions {
+    padding: 14px 16px 10px;
+    display: flex; gap: 8px;
+  }
+  .btn-new {
+    flex: 1;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 9px 10px;
+    font-family: var(--font-mono);
+    font-size: .75rem;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    transition: opacity .15s;
+  }
+  .btn-new:hover { opacity: .85; }
+
+  .sidebar-search {
+    padding: 0 16px 10px;
+  }
+  .sidebar-search input {
+    width: 100%;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: var(--radius);
+    color: var(--sidebar-tx);
+    font-family: var(--font-mono);
+    font-size: .75rem;
+    padding: 7px 10px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .sidebar-search input::placeholder { color: var(--sidebar-muted); }
+  .sidebar-search input:focus { border-color: var(--accent); }
+
+  #budget-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 8px;
+  }
+  #budget-list::-webkit-scrollbar { width: 4px; }
+  #budget-list::-webkit-scrollbar-track { background: transparent; }
+  #budget-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 2px; }
+
+  .budget-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background .12s;
+  }
+  .budget-item:hover { background: rgba(255,255,255,.07); }
+  .budget-item.active { background: rgba(200,87,42,.2); }
+
+  .budget-item-info { flex: 1; min-width: 0; }
+  .budget-item-name {
+    font-size: .8rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--sidebar-tx);
+  }
+  .budget-item.active .budget-item-name { color: #fff; }
+  .budget-item-date {
+    font-size: .68rem;
+    color: var(--sidebar-muted);
+    margin-top: 2px;
+  }
+
+  .budget-item-actions {
+    display: none; gap: 4px; flex-shrink: 0;
+  }
+  .budget-item:hover .budget-item-actions { display: flex; }
+  .budget-item-actions button {
+    background: none; border: none;
+    color: var(--sidebar-muted);
+    cursor: pointer; padding: 2px 4px;
+    font-size: .75rem; border-radius: 3px;
+    transition: color .12s, background .12s;
+  }
+  .budget-item-actions button:hover { color: #fff; background: rgba(255,255,255,.1); }
+
+  .sidebar-footer {
+    padding: 14px 16px;
+    border-top: 1px solid rgba(255,255,255,.07);
+  }
+  .btn-signout {
+    width: 100%;
+    background: none;
+    border: 1px solid rgba(255,255,255,.1);
+    color: var(--sidebar-muted);
+    border-radius: var(--radius);
+    padding: 8px;
+    font-family: var(--font-mono);
+    font-size: .73rem;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .btn-signout:hover { color: var(--sidebar-tx); border-color: rgba(255,255,255,.25); }
+
+  /* ─── Main Editor ───────────────────────────────────────── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  #toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  #budget-name-input {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    font-style: italic;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--tx);
+    min-width: 200px;
+    max-width: 400px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background .12s;
+  }
+  #budget-name-input:hover { background: var(--bg); }
+  #budget-name-input:focus { background: var(--accent-lt); }
+
+  .toolbar-spacer { flex: 1; }
+
+  .status-indicator {
+    font-size: .73rem;
+    color: var(--tx-muted);
+    display: flex; align-items: center; gap: 6px;
+    min-width: 90px;
+    justify-content: flex-end;
+  }
+  .status-indicator.saving { color: #c8922a; }
+  .status-indicator.saved  { color: #2a8c57; }
+  .status-indicator.error  { color: #c82a2a; }
+
+  .btn-duplicate {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--tx-muted);
+    border-radius: var(--radius);
+    padding: 6px 14px;
+    font-family: var(--font-mono);
+    font-size: .73rem;
+    cursor: pointer;
+    transition: all .12s;
+    letter-spacing: .03em;
+  }
+  .btn-duplicate:hover { border-color: var(--tx-muted); color: var(--tx); }
+
+  /* ─── Editor Body ───────────────────────────────────────── */
+  #editor {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 24px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+  }
+  #editor::-webkit-scrollbar { width: 6px; }
+  #editor::-webkit-scrollbar-track { background: transparent; }
+  #editor::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ─── Section (Cash / Debit) ────────────────────────────── */
+  .section {
+    background: var(--surface);
+    border-radius: 10px;
+    overflow: visible;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px 12px;
+    color: #fff;
+    border-radius: 10px 10px 0 0;
+  }
+  .section-header.cash  { background: var(--cash-hdr); }
+  .section-header.debit { background: var(--debit-hdr); }
+
+  .section-title {
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: .03em;
+  }
+  .section-total {
+    font-family: var(--font-mono);
+    font-size: .9rem;
+    font-weight: 500;
+    opacity: .9;
+  }
+
+  /* ─── Table ─────────────────────────────────────────────── */
+  .budget-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .8rem;
+  }
+
+  .budget-table thead th {
+    background: var(--bg);
+    color: var(--tx-muted);
+    font-weight: 500;
+    font-size: .7rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 9px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .budget-table thead th.num { text-align: right; }
+
+  .budget-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background .1s;
+  }
+  .budget-table tbody tr:last-child { border-bottom: none; }
+  .budget-table tbody tr:hover { background: var(--row-hover); }
+
+  .budget-table td {
+    padding: 0;
+    vertical-align: middle;
+  }
+
+  .budget-table td.actions-col {
+    width: 36px;
+    text-align: center;
+    padding: 0 4px;
+  }
+
+  .budget-table tfoot .cash-summary-row td {
+    padding: 11px 12px;
+    border-top: 2px solid var(--border);
+    background: var(--bg);
+    font-size: .78rem;
+    color: var(--tx);
+    text-align: right;
+    font-family: var(--font-mono);
+  }
+
+  .budget-table tfoot .cash-summary-row .cash-summary-label {
+    border-top: 2px solid var(--border);
+    text-align: left;
+    font-weight: 600;
+    color: var(--tx-muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+
+  .cell-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--font-mono);
+    font-size: .8rem;
+    color: var(--tx);
+    padding: 10px 12px;
+    transition: background .1s;
+  }
+  .cell-input:focus {
+    background: var(--accent-lt);
+    border-radius: 3px;
+  }
+  .cell-input.num {
+    text-align: right;
+  }
+
+  .btn-delete-row {
+    background: none; border: none;
+    color: var(--border);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 4px;
+    transition: color .12s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .budget-table tbody tr:hover .btn-delete-row { color: #c82a2a; }
+
+  .table-footer {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 0 0 10px 10px;
+  }
+  .btn-add-row {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--tx-muted);
+    border-radius: var(--radius);
+    padding: 6px 14px;
+    font-family: var(--font-mono);
+    font-size: .73rem;
+    cursor: pointer;
+    transition: all .12s;
+    letter-spacing: .03em;
+  }
+  .btn-add-row:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ─── Grand Total ─────────────────────────────────────── */
+  .grand-total-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .grand-total-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    background: var(--accent);
+    color: #fff;
+    padding: 12px 14px;
+    border-radius: 10px 10px 0 0;
+  }
+
+  .grand-total-title {
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .grand-total-caption {
+    color: rgba(255,255,255,.9);
+    font-size: .72rem;
+  }
+
+  .grand-total-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 20px 16px;
+  }
+
+  .grand-total-group {
+    display: flex;
+    gap: 12px;
+  }
+
+  .grand-total-row {
+    flex: 1 1 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: 8px;
+    min-width: 0;
+  }
+
+  .grand-total-row span {
+    color: var(--tx-muted);
+    font-size: .76rem;
+  }
+
+  .grand-total-row strong {
+    font-family: var(--font-mono);
+    font-size: .9rem;
+    color: inherit;
+  }
+
+  .grand-total-row.positive {
+    color: #2a8c57;
+  }
+
+  .grand-total-row.negative {
+    color: #c82a2a;
+  }
+
+  .grand-total-input {
+    width: 120px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    font-family: var(--font-mono);
+    font-size: .85rem;
+    padding: 6px 8px;
+    text-align: right;
+    outline: none;
+  }
+
+  .grand-total-input:focus {
+    border-color: var(--accent);
+  }
+
+  .grand-total-positive { color: #2a8c57; }
+  .grand-total-negative { color: #c82a2a; }
+
+  /* ─── Empty / Loading states ────────────────────────────── */
+  #empty-state {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100%;
+    color: var(--tx-muted);
+    gap: 12px;
+    font-size: .85rem;
+  }
+  #empty-state h3 {
+    font-family: var(--font-serif);
+    font-size: 1.5rem;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--tx);
+  }
+
+  .spinner {
+    width: 24px; height: 24px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ─── Modal (rename / confirm) ───────────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn .15s ease;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-box {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 28px 32px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    min-width: 320px; max-width: 420px; width: 90%;
+  }
+  .modal-box h3 {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .modal-box input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-family: var(--font-mono);
+    font-size: .85rem;
+    outline: none;
+    margin-bottom: 18px;
+    transition: border-color .12s;
+  }
+  .modal-box input:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-cancel {
+    background: none; border: 1px solid var(--border);
+    color: var(--tx-muted);
+    border-radius: var(--radius); padding: 8px 18px;
+    font-family: var(--font-mono); font-size: .78rem; cursor: pointer;
+    transition: all .12s;
+  }
+  .btn-cancel:hover { border-color: var(--tx-muted); color: var(--tx); }
+  .btn-confirm {
+    background: var(--accent); border: none;
+    color: #fff; border-radius: var(--radius);
+    padding: 8px 18px;
+    font-family: var(--font-mono); font-size: .78rem;
+    cursor: pointer; transition: opacity .12s;
+  }
+  .btn-confirm:hover { opacity: .85; }
+  .btn-confirm.danger { background: #c82a2a; }
+
+  /* ─── Responsive ─────────────────────────────────────────── */
+  @media (max-width: 700px) {
+    #sidebar { position: fixed; left: -100%; z-index: 100; transition: left .25s; }
+    #sidebar.open { left: 0; }
+    #app { flex-direction: column; }
+    #main { width: 100%; }
+    .mobile-menu-btn { display: flex !important; }
+  }
+
+  .mobile-menu-btn {
+    display: none;
+    background: none; border: none; cursor: pointer;
+    color: var(--tx-muted); padding: 4px; margin-right: 8px;
+  }
+
+  input[type="date"].cell-input {
+    color-scheme: light;
+    font-family: var(--font-mono);
+    font-size: .8rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── Login Screen ──────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>BudgetDesk</h1>
+    <p>A private, spreadsheet-style budget manager.<br>Sign in to access your budgets.</p>
+    <button class="google-btn" id="sign-in-btn">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.909-2.259c-.806.54-1.837.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      Sign in with Google
+    </button>
+  </div>
+</div>
+
+<!-- ─── App Shell ──────────────────────────────────────── -->
+<div id="app">
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <h2><span style="color: var(--accent);">$</span> BudgetDesk</h2>
+      <div class="user-email" id="user-email"></div>
+    </div>
+    <div class="sidebar-actions">
+      <button class="btn-new" id="btn-new-budget">+ New Budget</button>
+    </div>
+    <div class="sidebar-search">
+      <input type="text" id="search-input" placeholder="Search budgets…" />
+    </div>
+    <div id="budget-list"></div>
+    <div class="sidebar-footer">
+      <button class="btn-signout" id="btn-signout">Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main id="main">
+    <div id="toolbar">
+      <button class="mobile-menu-btn" id="mobile-menu-btn">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+          <rect y="3" width="20" height="2" rx="1"/>
+          <rect y="9" width="20" height="2" rx="1"/>
+          <rect y="15" width="20" height="2" rx="1"/>
+        </svg>
+      </button>
+      <input type="text" id="budget-name-input" value="My Budget" placeholder="Budget name…" />
+      <div class="toolbar-spacer"></div>
+      <button class="btn-duplicate" id="btn-duplicate">Duplicate</button>
+      <!-- <button class="btn-duplicate" id="btn-export">Export</button> -->
+       <button class="btn-duplicate" id="btn-export-png">Export PNG</button>
+      <button class="btn-duplicate" id="btn-export-pdf">Export PDF</button>
+      <div class="status-indicator" id="status-indicator">—</div>
+    </div>
+
+    <div id="editor">
+      <div id="empty-state">
+        <div class="spinner"></div>
+        <span>Loading…</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ─── Modal ─────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modal-title">Rename Budget</h3>
+    <input type="text" id="modal-input" placeholder="Budget name…" />
+    <div class="modal-btns">
+      <button class="btn-cancel" id="modal-cancel">Cancel</button>
+      <button class="btn-confirm" id="modal-confirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  FIREBASE CONFIG — Replace with your own credentials
+// ─────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBncHYW148kkZ_Hkplj_Y76Z6RzgUGf_5w",
+  authDomain: "fir-flutter-codelab-29a1c.firebaseapp.com",
+  projectId: "fir-flutter-codelab-29a1c",
+  storageBucket: "fir-flutter-codelab-29a1c.firebasestorage.app",
+  messagingSenderId: "749425165857",
+  appId: "1:749425165857:web:36d8873344bfd412f50560"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ─────────────────────────────────────────────────────────────
+//  DEFAULT DATA
+// ─────────────────────────────────────────────────────────────
+const DEFAULT_CASH_ITEMS = [
+  { name: "Grocery",               total: 450, d100: 0, d50: 0,  d20: 0,  d10: 0,  d5: 0  },
+  { name: "Animal",                total: 50,  d100: 0,   d50: 0, d20: 0,   d10: 0,  d5: 0  },
+  { name: "Entertainment",         total: 80,  d100: 0,   d50: 0, d20: 0,  d10: 0, d5: 0  },
+  { name: "Graham's Spending Money",total: 50, d100: 0,   d50: 0, d20: 0,   d10: 0,  d5: 0  },
+  { name: "Maddy's Spending Money", total: 50, d100: 0,   d50: 0, d20: 0,   d10: 0,  d5: 0  },
+  { name: "Date Night",            total: 50,  d100: 0,   d50: 0, d20: 0,   d10: 0,  d5: 0  },
+  { name: "Discretionary Spending",total: 50,  d100: 0,   d50: 0, d20: 0,   d10: 0,  d5: 0  },
+  { name: "Car Insurance",         total: 70,  d100: 0,   d50: 0, d20: 0,  d10: 0,  d5: 0  },
+  { name: "Fun Savings",           total: 50,  d100: 0,   d50: 0, d20: 0,   d10: 0,  d5: 0  },
+  { name: "Gifts",                 total: 40,  d100: 0,   d50: 0,  d20: 0,  d10: 0,  d5: 0  },
+  { name: "Car (Maintenance)",     total: 50,  d100: 0,   d50: 0, d20: 0,   d10: 0,  d5: 0  },
+  { name: "Home Improvement",      total: 50,  d100: 0,   d50: 0, d20: 0,   d10: 0,  d5: 0  },
+  { name: "Donation",              total: 50,  d100: 0,   d50: 0, d20: 0,   d10: 0,  d5: 0  },
+  { name: "Baby",                  total: 100, d100: 0, d50: 0,  d20: 0,   d10: 0,  d5: 0  },
+  { name: "Maternity Leave",       total: 300, d100: 0, d50: 0,  d20: 0,   d10: 0,  d5: 0  },
+];
+
+const DEFAULT_DEBIT_ITEMS = [
+  { name: "Mortgage",        total: 945, date: "", included: true },
+  { name: "Electric & Gas",  total: 0,   date: "", included: true },
+  { name: "Water & Sewer",   total: 0,   date: "", included: true },
+  { name: "Home Insurance",  total: 145, date: "", included: true },
+  { name: "Life Insurance",  total: 125, date: "", included: true },
+  { name: "Student Loans",   total: 0,   date: "", included: true },
+  { name: "Car Loan",        total: 155, date: "", included: true },
+  { name: "Retirement",      total: 250, date: "", included: true },
+  { name: "Donations",       total: 0,   date: "", included: true },
+  { name: "Savings",         total: 0,   date: "", included: true },
+  { name: "Subscriptions",   total: 0,   date: "", included: true },
+  { name: "Therapy",         total: 0,   date: "", included: true },
+  { name: "Internet",        total: 100, date: "", included: true },
+  { name: "Phone",           total: 125, date: "", included: true },
+  { name: "Gas",             total: 175, date: "", included: true },
+  { name: "Debt",            total: 475, date: "", included: true },
+];
+
+// ─────────────────────────────────────────────────────────────
+//  APP STATE
+// ─────────────────────────────────────────────────────────────
+let currentUser   = null;
+let budgets       = [];          // [{id, name, updatedAt}]
+let currentBudget = null;        // full budget doc
+let saveTimer     = null;
+let budgetUnsub   = null;        // Firestore listener
+
+// ─────────────────────────────────────────────────────────────
+//  AUTH
+// ─────────────────────────────────────────────────────────────
+document.getElementById('sign-in-btn').onclick = () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(e => alert('Sign-in failed: ' + e.message));
+};
+
+document.getElementById('btn-signout').onclick = () => {
+  auth.signOut();
+};
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('user-email').textContent = user.email;
+    loadBudgetList();
+  } else {
+    currentUser = null;
+    document.getElementById('login-screen').classList.remove('hidden');
+    if (budgetUnsub) { budgetUnsub(); budgetUnsub = null; }
+    renderBudgetList([]);
+    showEmpty();
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+//  BUDGET LIST (Firestore real-time)
+// ─────────────────────────────────────────────────────────────
+function loadBudgetList() {
+  if (!currentUser) return;
+  if (budgetUnsub) budgetUnsub();
+
+  const col = db.collection('users').doc(currentUser.uid).collection('budgets');
+  budgetUnsub = col.orderBy('updatedAt', 'desc').onSnapshot(snap => {
+    budgets = snap.docs.map(d => ({ id: d.id, name: d.data().name, updatedAt: d.data().updatedAt }));
+    renderBudgetList(budgets);
+    if (budgets.length === 0) {
+      createDefaultBudget();
+    } else if (!currentBudget) {
+      loadBudget(budgets[0].id);
+    }
+  }, err => console.error(err));
+}
+
+function renderBudgetList(list) {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const filtered = q ? list.filter(b => b.name.toLowerCase().includes(q)) : list;
+  const el = document.getElementById('budget-list');
+  el.innerHTML = '';
+  filtered.forEach(b => {
+    const item = document.createElement('div');
+    item.className = 'budget-item' + (currentBudget && currentBudget.id === b.id ? ' active' : '');
+    item.dataset.id = b.id;
+
+    const updStr = b.updatedAt ? formatDate(b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : '';
+
+    item.innerHTML = `
+      <div class="budget-item-info">
+        <div class="budget-item-name">${escHtml(b.name)}</div>
+        <div class="budget-item-date">${updStr}</div>
+      </div>
+      <div class="budget-item-actions">
+        <button title="Rename" data-action="rename" data-id="${b.id}">✎</button>
+        <button title="Delete" data-action="delete" data-id="${b.id}">✕</button>
+      </div>`;
+    item.addEventListener('click', e => {
+      const btn = e.target.closest('[data-action]');
+      if (btn) {
+        e.stopPropagation();
+        if (btn.dataset.action === 'rename') openRenameModal(b.id, b.name);
+        if (btn.dataset.action === 'delete') confirmDelete(b.id, b.name);
+      } else {
+        switchBudget(b.id);
+      }
+    });
+    el.appendChild(item);
+  });
+}
+
+document.getElementById('search-input').oninput = () => renderBudgetList(budgets);
+
+// ─────────────────────────────────────────────────────────────
+//  CRUD OPERATIONS
+// ─────────────────────────────────────────────────────────────
+function budgetsCol() {
+  return db.collection('users').doc(currentUser.uid).collection('budgets');
+}
+
+// async function createDefaultBudget() {
+//   const data = {
+//     name: "My First Budget",
+//     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+//     updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+//     data: {
+//       cashItems:  JSON.parse(JSON.stringify(DEFAULT_CASH_ITEMS)),
+//       debitItems: JSON.parse(JSON.stringify(DEFAULT_DEBIT_ITEMS)),
+//       checkingBalance: 0,
+//     }
+//   };
+//   const ref = await budgetsCol().add(data);
+//   loadBudget(ref.id);
+// }
+
+// async function createNewBudget() {
+//   const name = prompt('Budget name:', 'New Budget') || 'New Budget';
+//   const data = {
+//     name,
+//     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+//     updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+//     data: {
+//       cashItems:  JSON.parse(JSON.stringify(DEFAULT_CASH_ITEMS)),
+//       debitItems: JSON.parse(JSON.stringify(DEFAULT_DEBIT_ITEMS)),
+//       checkingBalance: 0,
+//     }
+//   };
+//   const ref = await budgetsCol().add(data);
+//   loadBudget(ref.id);
+// }
+
+function getTodayString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+async function createDefaultBudget() {
+  const today = getTodayString();
+  const data = {
+    name: "My First Budget",
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    data: {
+      cashItems:  JSON.parse(JSON.stringify(DEFAULT_CASH_ITEMS)),
+      debitItems: JSON.parse(JSON.stringify(DEFAULT_DEBIT_ITEMS)).map(item => ({ ...item, date: today })),
+      checkingBalance: 0,
+    }
+  };
+  const ref = await budgetsCol().add(data);
+  loadBudget(ref.id);
+}
+
+async function createNewBudget() {
+  const today = getTodayString();
+  const name = prompt('Budget name:', 'New Budget') || 'New Budget';
+  const data = {
+    name,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    data: {
+      cashItems:  JSON.parse(JSON.stringify(DEFAULT_CASH_ITEMS)),
+      debitItems: JSON.parse(JSON.stringify(DEFAULT_DEBIT_ITEMS)).map(item => ({ ...item, date: today })),
+      checkingBalance: 0,
+    }
+  };
+  const ref = await budgetsCol().add(data);
+  loadBudget(ref.id);
+}
+
+async function loadBudget(id) {
+  // Save current first if dirty
+  if (saveTimer) { clearTimeout(saveTimer); await flushSave(); }
+
+  setStatus('loading');
+  const doc = await budgetsCol().doc(id).get();
+  if (!doc.exists) return;
+  currentBudget = { id: doc.id, ...doc.data() };
+  currentBudget.data = currentBudget.data || {};
+  currentBudget.data.checkingBalance = parseNum(currentBudget.data.checkingBalance ?? 0);
+  document.getElementById('budget-name-input').value = currentBudget.name || '';
+  renderEditor(currentBudget.data);
+  renderBudgetList(budgets); // refresh active state
+  setStatus('saved');
+}
+
+async function switchBudget(id) {
+  if (currentBudget && currentBudget.id === id) return;
+  if (saveTimer) { clearTimeout(saveTimer); await flushSave(); }
+  loadBudget(id);
+}
+
+async function deleteBudget(id) {
+  await budgetsCol().doc(id).delete();
+  if (currentBudget && currentBudget.id === id) {
+    currentBudget = null;
+    showEmpty();
+  }
+}
+
+async function renameBudget(id, name) {
+  await budgetsCol().doc(id).update({ name, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  if (currentBudget && currentBudget.id === id) {
+    currentBudget.name = name;
+    document.getElementById('budget-name-input').value = name;
+  }
+}
+
+async function duplicateBudget() {
+  if (!currentBudget) return;
+  if (saveTimer) { clearTimeout(saveTimer); await flushSave(); }
+  const data = {
+    name: currentBudget.name + ' (copy)',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    data: JSON.parse(JSON.stringify(currentBudget.data))
+  };
+  const ref = await budgetsCol().add(data);
+  loadBudget(ref.id);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  AUTOSAVE
+// ─────────────────────────────────────────────────────────────
+function scheduleSave() {
+  if (!currentBudget) return;
+  setStatus('saving');
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushSave, 1400);
+}
+
+async function flushSave() {
+  saveTimer = null;
+  if (!currentBudget) return;
+  try {
+    await budgetsCol().doc(currentBudget.id).update({
+      name:      currentBudget.name,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      data:      currentBudget.data,
+    });
+    setStatus('saved');
+  } catch (e) {
+    setStatus('error');
+    console.error(e);
+  }
+}
+
+function setStatus(s) {
+  const el = document.getElementById('status-indicator');
+  el.className = 'status-indicator ' + s;
+  if (s === 'saving')  el.textContent = '● Saving…';
+  else if (s === 'saved')   el.textContent = '✓ Saved';
+  else if (s === 'error')   el.textContent = '✕ Error';
+  else if (s === 'loading') el.textContent = '…';
+  else el.textContent = '—';
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TOOLBAR EVENTS
+// ─────────────────────────────────────────────────────────────
+document.getElementById('btn-new-budget').onclick = createNewBudget;
+document.getElementById('btn-duplicate').onclick  = duplicateBudget;
+
+document.getElementById('budget-name-input').oninput = e => {
+  if (!currentBudget) return;
+  currentBudget.name = e.target.value;
+  scheduleSave();
+};
+
+document.getElementById('mobile-menu-btn').onclick = () => {
+  document.getElementById('sidebar').classList.toggle('open');
+};
+
+document.getElementById('btn-export-png').onclick = () => runExport('png');
+document.getElementById('btn-export-pdf').onclick = () => runExport('pdf');
+
+// document.getElementById('btn-export').onclick = () => {
+//   if (!currentBudget) return;
+
+//   const menu = document.createElement('div');
+//   menu.style.cssText = `
+//     position: fixed; z-index: 400;
+//     background: var(--surface);
+//     border: 1px solid var(--border);
+//     border-radius: var(--radius);
+//     box-shadow: var(--shadow);
+//     padding: 6px;
+//     display: flex;
+//     flex-direction: column;
+//     gap: 4px;
+//   `;
+
+//   const toolbar = document.getElementById('toolbar');
+//   const btnRect = document.getElementById('btn-export').getBoundingClientRect();
+//   menu.style.top = (btnRect.bottom + 6) + 'px';
+//   menu.style.left = btnRect.left + 'px';
+
+//   const btnPNG = document.createElement('button');
+//   btnPNG.textContent = 'Export as PNG';
+//   btnPNG.className = 'btn-duplicate';
+//   btnPNG.style.display = 'block';
+//   btnPNG.style.width = '100%';
+//   btnPNG.style.textAlign = 'left';
+
+//   const btnPDF = document.createElement('button');
+//   btnPDF.textContent = 'Export as PDF';
+//   btnPDF.className = 'btn-duplicate';
+//   btnPDF.style.display = 'block';
+//   btnPDF.style.width = '100%';
+//   btnPDF.style.textAlign = 'left';
+
+//   menu.appendChild(btnPNG);
+//   menu.appendChild(btnPDF);
+//   document.body.appendChild(menu);
+
+//   const cleanup = () => menu.remove();
+//   document.addEventListener('click', cleanup, { once: true });
+
+//   btnPNG.onclick = (e) => {
+//     e.stopPropagation();
+//     cleanup();
+//     runExport('png');
+//   };
+//   btnPDF.onclick = (e) => {
+//     e.stopPropagation();
+//     cleanup();
+//     runExport('pdf');
+//   };
+// };
+
+async function runExport(format) {
+  const editor = document.getElementById('editor');
+  const originalStyle = editor.getAttribute('style') || '';
+
+  // Temporarily expand editor to full content height so nothing is clipped
+  editor.style.overflow = 'visible';
+  editor.style.height = 'auto';
+  editor.style.maxHeight = 'none';
+
+  setStatus('saving');
+
+  try {
+    const canvas = await html2canvas(editor, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#f5f2ec',
+      scrollY: 0,
+      windowWidth: editor.scrollWidth,
+      windowHeight: editor.scrollHeight,
+    });
+
+    if (format === 'png') {
+      const link = document.createElement('a');
+      link.download = (currentBudget.name || 'budget') + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } else {
+      const { jsPDF } = window.jspdf;
+      const imgData = canvas.toDataURL('image/png');
+      const pdfWidth = 210; // A4 mm
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdf = new jsPDF({
+        orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
+        unit: 'mm',
+        format: [pdfWidth, pdfHeight]
+      });
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save((currentBudget.name || 'budget') + '.pdf');
+    }
+
+    setStatus('saved');
+  } catch (err) {
+    console.error(err);
+    setStatus('error');
+  } finally {
+    editor.setAttribute('style', originalStyle);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  EDITOR RENDERING
+// ─────────────────────────────────────────────────────────────
+function showEmpty() {
+  document.getElementById('editor').innerHTML =
+    `<div id="empty-state"><h3>No budget selected</h3><span>Create or select a budget from the sidebar.</span></div>`;
+}
+
+function renderEditor(data) {
+  const ed = document.getElementById('editor');
+  ed.innerHTML = '';
+  ed.appendChild(buildGrandTotalPanel());
+  ed.appendChild(buildCashSection(data.cashItems));
+  ed.appendChild(buildDebitSection(data.debitItems));
+}
+
+function getCheckingBalance() {
+  if (!currentBudget || !currentBudget.data) return 0;
+  return parseNum(currentBudget.data.checkingBalance ?? 0);
+}
+
+function setCheckingBalance(value) {
+  if (!currentBudget || !currentBudget.data) return;
+  currentBudget.data.checkingBalance = parseNum(value);
+}
+
+function getCashTotalValue() {
+  if (!currentBudget || !currentBudget.data) return 0;
+  return currentBudget.data.cashItems.reduce((s, item) => s + parseNum(item.total), 0);
+}
+
+// function getDebitTotalValue() {
+//   if (!currentBudget || !currentBudget.data) return 0;
+//   return currentBudget.data.debitItems.reduce((s, item) => s + parseNum(item.total), 0);
+// }
+function getDebitTotalValue() {
+  if (!currentBudget || !currentBudget.data) return 0;
+  return currentBudget.data.debitItems.reduce((s, item) => {
+    return s + (item.included === false ? 0 : parseNum(item.total));
+  }, 0);
+}
+
+function formatPercent(n) {
+  return n.toFixed(1) + '%';
+}
+
+function buildGrandTotalPanel() {
+  const panel = document.createElement('div');
+  panel.className = 'grand-total-panel';
+  panel.innerHTML = `
+    <div class="grand-total-header">
+      <div>
+        <div class="grand-total-title">TOTAL</div>
+      </div>
+    </div>
+    <div class="grand-total-grid">
+      <div class="grand-total-group">
+        <div class="grand-total-row"><span>Checking account</span><input id="gt-checking-input" class="grand-total-input" type="text" inputmode="decimal" value="$0" /></div>
+      </div>
+      <div class="grand-total-group">
+        <div class="grand-total-row"><span>Cash</span><strong id="gt-cash">$0</strong></div>
+        <div class="grand-total-row"><span>Debit</span><strong id="gt-debit">$0</strong></div>
+        <div class="grand-total-row"><span>Combined total</span><strong id="gt-combined">$0</strong></div>
+        </div>
+        <div class="grand-total-group">
+          <div id="gt-surplus-row" class="grand-total-row"><span>Surplus / deficit</span><strong id="gt-surplus" class="grand-total-neutral">$0</strong></div>
+          <div id="gt-percent-row" class="grand-total-row"><span>Coverage %</span><strong id="gt-percent">0%</strong></div>
+      </div>
+    </div>`;
+
+  const input = panel.querySelector('#gt-checking-input');
+  input.value = formatMoney(getCheckingBalance());
+  input.onfocus = () => { input.value = String(parseNum(input.value)); };
+  input.onblur = () => {
+    const val = parseNum(input.value);
+    input.value = formatMoney(val);
+    setCheckingBalance(val);
+    updateGrandTotal(panel);
+    scheduleSave();
+  };
+  input.oninput = () => {
+    setCheckingBalance(parseNum(input.value));
+    updateGrandTotal(panel);
+    scheduleSave();
+  };
+
+  updateGrandTotal(panel);
+  return panel;
+}
+
+function updateGrandTotal(panel = document.querySelector('.grand-total-panel')) {
+  if (!panel || !currentBudget || !currentBudget.data) return;
+
+  const cash = getCashTotalValue();
+  const debit = getDebitTotalValue();
+  const combined = cash + debit;
+  const checking = getCheckingBalance();
+  const surplus = checking - combined;
+  const percent = combined === 0 ? 100 : (checking / combined) * 100;
+
+  const cashEl = panel.querySelector('#gt-cash');
+  const debitEl = panel.querySelector('#gt-debit');
+  const combinedEl = panel.querySelector('#gt-combined');
+  const surplusEl = panel.querySelector('#gt-surplus');
+  const percentEl = panel.querySelector('#gt-percent');
+  const surplusRow = panel.querySelector('#gt-surplus-row');
+  const percentRow = panel.querySelector('#gt-percent-row');
+
+  if (cashEl) cashEl.textContent = formatMoney(cash);
+  if (debitEl) debitEl.textContent = formatMoney(debit);
+  if (combinedEl) combinedEl.textContent = formatMoney(combined);
+  if (percentEl) percentEl.textContent = formatPercent(percent);
+
+  [surplusRow, percentRow].forEach(row => {
+    if (!row) return;
+    row.classList.remove('grand-total-positive', 'grand-total-negative');
+  });
+
+  if (surplusEl) {
+    surplusEl.textContent = formatMoney(surplus);
+  }
+
+  if (surplusRow) {
+    if (surplus >= 0) {
+      surplusRow.classList.add('grand-total-positive');
+    } else {
+      surplusRow.classList.add('grand-total-negative');
+    }
+  }
+
+  if (percentRow) {
+    if (percent >= 100) {
+      percentRow.classList.add('grand-total-positive');
+    } else {
+      percentRow.classList.add('grand-total-negative');
+    }
+  }
+}
+
+// ─── CASH SECTION ────────────────────────────────────────────
+function buildCashSection(items) {
+  const section = document.createElement('div');
+  section.className = 'section';
+  section.id = 'cash-section';
+
+  const totalAmt = items.reduce((s, i) => s + (parseNum(i.total)), 0);
+
+  section.innerHTML = `
+    <div class="section-header cash">
+      <span class="section-title">CASH</span>
+      <span class="section-total" id="cash-total">$${fmt(totalAmt)}</span>
+    </div>
+    <table class="budget-table" id="cash-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th class="num">Total</th>
+          <th class="num">$100</th>
+          <th class="num">$50</th>
+          <th class="num">$20</th>
+          <th class="num">$10</th>
+          <th class="num">$5</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="cash-tbody"></tbody>
+      <tfoot>
+        <tr class="cash-summary-row">
+          <th colspan="2" class="cash-summary-label">
+            Total bills
+            <button id="btn-export-bills" title="Export bills as PNG" style="background:none; border:none; color:var(--tx-muted); cursor:pointer; font-size:.75rem; padding:4px 6px; border-radius:var(--radius); transition:color .12s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--tx-muted)'">↓ PNG</button>
+          </th>
+          <td id="cash-summary-d100">0</td>
+          <td id="cash-summary-d50">0</td>
+          <td id="cash-summary-d20">0</td>
+          <td id="cash-summary-d10">0</td>
+          <td id="cash-summary-d5">0</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div class="table-footer">
+      <button class="btn-add-row" id="cash-add-row">+ Add Row</button>
+    </div>`;
+
+  section.querySelector('#btn-export-bills').onclick = () => exportBillsSummary();
+
+
+  // async function exportBillsSummary() {
+  //   const table = document.getElementById('cash-table');
+  //   const originalStyle = table.getAttribute('style') || '';
+  //   table.style.background = '#f5f2ec';
+
+  //   try {
+  //     const canvas = await html2canvas(table, {
+  //       scale: 2,
+  //       useCORS: true,
+  //       backgroundColor: '#f5f2ec',
+  //     });
+
+  //     const link = document.createElement('a');
+  //     link.download = (currentBudget.name || 'budget') + '-bills.png';
+  //     link.href = canvas.toDataURL('image/png');
+  //     link.click();
+  //   } catch (err) {
+  //     console.error(err);
+  //   } finally {
+  //     table.setAttribute('style', originalStyle);
+  //   }
+  // }
+
+  async function exportBillsSummary() {
+    const table = document.getElementById('cash-table');
+
+    try {
+      const canvas = await html2canvas(table, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#f5f2ec',
+        y: -12,
+        height: table.scrollHeight + 24,
+        windowHeight: table.scrollHeight + 24,
+      });
+
+      const link = document.createElement('a');
+      link.download = (currentBudget.name || 'budget') + '-bills.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  const tbody = section.querySelector('#cash-tbody');
+  items.forEach((item, idx) => tbody.appendChild(buildCashRow(item, idx)));
+
+  section.querySelector('#cash-add-row').onclick = () => {
+    const newItem = { name: '', total: 0, d100: 0, d50: 0, d20: 0, d10: 0, d5: 0 };
+    currentBudget.data.cashItems.push(newItem);
+    const idx = currentBudget.data.cashItems.length - 1;
+    tbody.appendChild(buildCashRow(newItem, idx));
+    updateCashTotal();
+    updateCashBillSummary(section);
+    scheduleSave();
+  };
+
+  updateCashTotal();
+  updateCashBillSummary(section);
+
+  return section;
+}
+
+function buildCashRow(item, idx) {
+  const tr = document.createElement('tr');
+  tr.dataset.idx = idx;
+
+  const fields = [
+    { key: 'name',  cls: '',    type: 'text'   },
+    { key: 'total', cls: 'num', type: 'currency' },
+    { key: 'd100',  cls: 'num', type: 'count' },
+    { key: 'd50',   cls: 'num', type: 'count' },
+    { key: 'd20',   cls: 'num', type: 'count' },
+    { key: 'd10',   cls: 'num', type: 'count' },
+    { key: 'd5',    cls: 'num', type: 'count' },
+  ];
+
+  fields.forEach(f => {
+    const td = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.className = 'cell-input ' + f.cls;
+    inp.type = 'text';
+    inp.inputMode = f.key === 'name' ? 'text' : (f.type === 'currency' ? 'decimal' : 'numeric');
+    inp.value = f.key === 'name' ? (item[f.key] || '') : (f.type === 'currency' ? formatMoney(item[f.key] || 0) : formatBillCount(item[f.key] || 0));
+    inp.placeholder = f.key === 'name' ? 'Item name…' : (f.type === 'currency' ? '$0' : '0');
+    inp.dataset.field = f.key;
+    if (f.key === 'name') {
+      inp.oninput = () => {
+        const i = currentBudget.data.cashItems[tr.dataset.idx];
+        if (!i) return;
+        i[f.key] = inp.value;
+        scheduleSave();
+      };
+    } else if (f.type === 'currency') {
+      inp.onfocus = () => {
+        inp.value = String(parseNum(inp.value));
+      };
+      inp.onblur = () => {
+        const val = parseNum(inp.value);
+        inp.value = formatMoney(val);
+        const i = currentBudget.data.cashItems[tr.dataset.idx];
+        if (!i) return;
+        i[f.key] = val;
+        updateCashTotal();
+        scheduleSave();
+      };
+      inp.oninput = () => {
+        const i = currentBudget.data.cashItems[tr.dataset.idx];
+        if (!i) return;
+        i[f.key] = parseNum(inp.value);
+        updateCashTotal();
+        scheduleSave();
+      };
+    } else {
+      inp.onfocus = () => {
+        inp.value = String(parseBillCount(inp.value));
+      };
+      inp.onblur = () => {
+        const val = parseBillCount(inp.value);
+        inp.value = formatBillCount(val);
+        const i = currentBudget.data.cashItems[tr.dataset.idx];
+        if (!i) return;
+        i[f.key] = val;
+        updateCashBillSummary();
+        scheduleSave();
+      };
+      inp.oninput = () => {
+        const i = currentBudget.data.cashItems[tr.dataset.idx];
+        if (!i) return;
+        i[f.key] = parseBillCount(inp.value);
+        updateCashBillSummary();
+        scheduleSave();
+      };
+    }
+    td.appendChild(inp);
+    tr.appendChild(td);
+  });
+
+  // Delete button
+  const tdDel = document.createElement('td');
+  tdDel.className = 'actions-col';
+  const btnDel = document.createElement('button');
+  btnDel.className = 'btn-delete-row';
+  btnDel.innerHTML = '×';
+  btnDel.title = 'Remove row';
+  btnDel.onclick = () => {
+    const i = parseInt(tr.dataset.idx);
+    currentBudget.data.cashItems.splice(i, 1);
+    tr.remove();
+    // Re-index rows
+    document.querySelectorAll('#cash-tbody tr').forEach((r, idx) => r.dataset.idx = idx);
+    updateCashTotal();
+    updateCashBillSummary(tr.closest('.section'));
+    scheduleSave();
+  };
+  tdDel.appendChild(btnDel);
+  tr.appendChild(tdDel);
+
+  return tr;
+}
+
+function updateCashTotal() {
+  const total = getCashTotalValue();
+  const el = document.getElementById('cash-total');
+  if (el) el.textContent = '$' + fmt(total);
+  updateGrandTotal();
+}
+
+function updateCashBillSummary(section = document.getElementById('cash-section')) {
+  if (!section) return;
+
+  const summary = currentBudget.data.cashItems.reduce((sum, item) => {
+    sum.d100 += parseBillCount(item.d100);
+    sum.d50 += parseBillCount(item.d50);
+    sum.d20 += parseBillCount(item.d20);
+    sum.d10 += parseBillCount(item.d10);
+    sum.d5 += parseBillCount(item.d5);
+    return sum;
+  }, { d100: 0, d50: 0, d20: 0, d10: 0, d5: 0 });
+
+  const d100 = section.querySelector('#cash-summary-d100');
+  const d50 = section.querySelector('#cash-summary-d50');
+  const d20 = section.querySelector('#cash-summary-d20');
+  const d10 = section.querySelector('#cash-summary-d10');
+  const d5 = section.querySelector('#cash-summary-d5');
+
+  if (d100) d100.textContent = formatBillCount(summary.d100);
+  if (d50) d50.textContent = formatBillCount(summary.d50);
+  if (d20) d20.textContent = formatBillCount(summary.d20);
+  if (d10) d10.textContent = formatBillCount(summary.d10);
+  if (d5) d5.textContent = formatBillCount(summary.d5);
+}
+
+// ─── DEBIT SECTION ───────────────────────────────────────────
+function buildDebitSection(items) {
+  const section = document.createElement('div');
+  section.className = 'section';
+  section.id = 'debit-section';
+
+  const totalAmt = items.reduce((s, i) => s + parseNum(i.total), 0);
+
+  section.innerHTML = `
+    <div class="section-header debit">
+      <span class="section-title">DEBIT</span>
+      <span class="section-total" id="debit-total">$${fmt(totalAmt)}</span>
+    </div>
+    <table class="budget-table" id="debit-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th class="num">Total</th>
+          <th>Date</th>
+          <th style="width:44px; text-align:center;">On</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="debit-tbody"></tbody>
+    </table>
+    <div class="table-footer">
+      <button class="btn-add-row" id="debit-add-row">+ Add Row</button>
+    </div>`;
+
+  const tbody = section.querySelector('#debit-tbody');
+  items.forEach((item, idx) => tbody.appendChild(buildDebitRow(item, idx)));
+
+  section.querySelector('#debit-add-row').onclick = () => {
+    const newItem = { name: '', total: 0, date: '' };
+    currentBudget.data.debitItems.push(newItem);
+    const idx = currentBudget.data.debitItems.length - 1;
+    tbody.appendChild(buildDebitRow(newItem, idx));
+    updateDebitTotal();
+    scheduleSave();
+  };
+
+  return section;
+}
+
+// function buildDebitRow(item, idx) {
+//   const tr = document.createElement('tr');
+//   tr.dataset.idx = idx;
+
+//   const fields = [
+//     { key: 'name',  cls: '',    placeholder: 'Item name…' },
+//     { key: 'total', cls: 'num', placeholder: '0', isNum: true },
+//     { key: 'date',  cls: '',    placeholder: '15th…' },
+//   ];
+
+//   fields.forEach(f => {
+//     const td = document.createElement('td');
+//     const inp = document.createElement('input');
+//     inp.className = 'cell-input ' + f.cls;
+//     inp.type = 'text';
+//     inp.inputMode = f.isNum ? 'decimal' : 'text';
+//     inp.value = f.isNum ? formatMoney(item[f.key] || 0) : (item[f.key] || '');
+//     inp.placeholder = f.isNum ? '$0' : f.placeholder;
+//     inp.dataset.field = f.key;
+//     if (f.isNum) {
+//       inp.onfocus = () => {
+//         inp.value = String(parseNum(inp.value));
+//       };
+//       inp.onblur = () => {
+//         const val = parseNum(inp.value);
+//         inp.value = formatMoney(val);
+//         const i = currentBudget.data.debitItems[tr.dataset.idx];
+//         if (!i) return;
+//         i[f.key] = val;
+//         updateDebitTotal();
+//         scheduleSave();
+//       };
+//     }
+//     inp.oninput = () => {
+//       const i = currentBudget.data.debitItems[tr.dataset.idx];
+//       if (!i) return;
+//       i[f.key] = f.isNum ? parseNum(inp.value) : inp.value;
+//       if (f.isNum) updateDebitTotal();
+//       scheduleSave();
+//     };
+//     td.appendChild(inp);
+//     tr.appendChild(td);
+//   });
+
+//   const tdDel = document.createElement('td');
+//   tdDel.className = 'actions-col';
+//   const btnDel = document.createElement('button');
+//   btnDel.className = 'btn-delete-row';
+//   btnDel.innerHTML = '×';
+//   btnDel.title = 'Remove row';
+//   btnDel.onclick = () => {
+//     const i = parseInt(tr.dataset.idx);
+//     currentBudget.data.debitItems.splice(i, 1);
+//     tr.remove();
+//     document.querySelectorAll('#debit-tbody tr').forEach((r, idx) => r.dataset.idx = idx);
+//     updateDebitTotal();
+//     scheduleSave();
+//   };
+//   tdDel.appendChild(btnDel);
+//   tr.appendChild(tdDel);
+
+//   return tr;
+// }
+
+function updateDebitTotal() {
+  const total = getDebitTotalValue();
+  const el = document.getElementById('debit-total');
+  if (el) el.textContent = '$' + fmt(total);
+  updateGrandTotal();
+}
+
+// function buildDebitRow(item, idx) {
+//   const tr = document.createElement('tr');
+//   tr.dataset.idx = idx;
+
+//   const fields = [
+//     { key: 'name',  cls: '',    placeholder: 'Item name…' },
+//     { key: 'total', cls: 'num', placeholder: '0', isNum: true },
+//     { key: 'date',  cls: '',    placeholder: '15th…' },
+//   ];
+
+//   fields.forEach(f => {
+//     const td = document.createElement('td');
+//     const inp = document.createElement('input');
+//     inp.className = 'cell-input ' + f.cls;
+//     inp.type = 'text';
+//     inp.inputMode = f.isNum ? 'decimal' : 'text';
+//     inp.value = f.isNum ? formatMoney(item[f.key] || 0) : (item[f.key] || '');
+//     inp.placeholder = f.isNum ? '$0' : f.placeholder;
+//     inp.dataset.field = f.key;
+//     if (f.isNum) {
+//       inp.onfocus = () => {
+//         inp.value = String(parseNum(inp.value));
+//       };
+//       inp.onblur = () => {
+//         const val = parseNum(inp.value);
+//         inp.value = formatMoney(val);
+//         const i = currentBudget.data.debitItems[tr.dataset.idx];
+//         if (!i) return;
+//         i[f.key] = val;
+//         updateDebitTotal();
+//         scheduleSave();
+//       };
+//     }
+//     inp.oninput = () => {
+//       const i = currentBudget.data.debitItems[tr.dataset.idx];
+//       if (!i) return;
+//       i[f.key] = f.isNum ? parseNum(inp.value) : inp.value;
+//       if (f.isNum) updateDebitTotal();
+//       scheduleSave();
+//     };
+//     td.appendChild(inp);
+//     tr.appendChild(td);
+//   });
+
+//   // Toggle button
+//   const tdToggle = document.createElement('td');
+//   tdToggle.className = 'actions-col';
+//   tdToggle.style.width = '44px';
+//   tdToggle.style.textAlign = 'center';
+
+//   const toggle = document.createElement('button');
+//   const isIncluded = item.included !== false;
+
+//   toggle.className = 'btn-toggle-row';
+//   toggle.title = isIncluded ? 'Exclude from total' : 'Include in total';
+//   toggle.textContent = isIncluded ? '●' : '○';
+//   // toggle.style.cssText = `
+//   //   background: none; border: none; cursor: pointer;
+//   //   font-size: 1rem; padding: 4px 8px;
+//   //   color: ${isIncluded ? 'var(--accent)' : 'var(--border)'};
+//   //   transition: color .12s;
+//   // `;
+//   toggle.style.background = 'none';
+//   toggle.style.border = 'none';
+//   toggle.style.cursor = 'pointer';
+//   toggle.style.fontSize = '1rem';
+//   toggle.style.padding = '4px 8px';
+//   toggle.style.color = isIncluded ? 'var(--accent)' : 'var(--border)';
+//   toggle.style.transition = 'color .12s';
+//   toggle.onclick = () => {
+//     const i = currentBudget.data.debitItems[tr.dataset.idx];
+//     if (!i) return;
+//     i.included = i.included === false ? true : false;
+//     const nowIncluded = i.included !== false;
+//     toggle.textContent = nowIncluded ? '●' : '○';
+//     toggle.title = nowIncluded ? 'Exclude from total' : 'Include in total';
+//     toggle.style.color = nowIncluded ? 'var(--accent)' : 'var(--border)';
+//     tr.style.opacity = nowIncluded ? '1' : '0.45';
+//     updateDebitTotal();
+//     scheduleSave();
+//   };
+
+//   tr.style.opacity = isIncluded ? '1' : '0.45';
+//   tdToggle.appendChild(toggle);
+//   tr.appendChild(tdToggle);
+
+//   // Delete button
+//   const tdDel = document.createElement('td');
+//   tdDel.className = 'actions-col';
+//   const btnDel = document.createElement('button');
+//   btnDel.className = 'btn-delete-row';
+//   btnDel.innerHTML = '×';
+//   btnDel.title = 'Remove row';
+//   btnDel.onclick = () => {
+//     const i = parseInt(tr.dataset.idx);
+//     currentBudget.data.debitItems.splice(i, 1);
+//     tr.remove();
+//     document.querySelectorAll('#debit-tbody tr').forEach((r, idx) => r.dataset.idx = idx);
+//     updateDebitTotal();
+//     scheduleSave();
+//   };
+//   tdDel.appendChild(btnDel);
+//   tr.appendChild(tdDel);
+
+//   return tr;
+// }
+
+function buildDebitRow(item, idx) {
+  const tr = document.createElement('tr');
+  tr.dataset.idx = idx;
+
+  const fields = [
+    { key: 'name',  cls: '',    placeholder: 'Item name…' },
+    { key: 'total', cls: 'num', placeholder: '0', isNum: true },
+  ];
+
+  fields.forEach(f => {
+    const td = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.className = 'cell-input ' + f.cls;
+    inp.type = 'text';
+    inp.inputMode = f.isNum ? 'decimal' : 'text';
+    inp.value = f.isNum ? formatMoney(item[f.key] || 0) : (item[f.key] || '');
+    inp.placeholder = f.isNum ? '$0' : f.placeholder;
+    inp.dataset.field = f.key;
+    if (f.isNum) {
+      inp.onfocus = () => {
+        inp.value = String(parseNum(inp.value));
+      };
+      inp.onblur = () => {
+        const val = parseNum(inp.value);
+        inp.value = formatMoney(val);
+        const i = currentBudget.data.debitItems[tr.dataset.idx];
+        if (!i) return;
+        i[f.key] = val;
+        updateDebitTotal();
+        scheduleSave();
+      };
+    }
+    inp.oninput = () => {
+      const i = currentBudget.data.debitItems[tr.dataset.idx];
+      if (!i) return;
+      i[f.key] = f.isNum ? parseNum(inp.value) : inp.value;
+      if (f.isNum) updateDebitTotal();
+      scheduleSave();
+    };
+    td.appendChild(inp);
+    tr.appendChild(td);
+  });
+
+  // Date input
+  const tdDate = document.createElement('td');
+  const dateInp = document.createElement('input');
+  dateInp.type = 'date';
+  dateInp.className = 'cell-input';
+  dateInp.value = item.date || '';
+  dateInp.style.cursor = 'pointer';
+  dateInp.style.minWidth = '130px';
+  dateInp.onchange = () => {
+    const i = currentBudget.data.debitItems[tr.dataset.idx];
+    if (!i) return;
+    i.date = dateInp.value;
+    scheduleSave();
+  };
+  tdDate.appendChild(dateInp);
+  tr.appendChild(tdDate);
+
+  // Toggle button
+  const tdToggle = document.createElement('td');
+  tdToggle.className = 'actions-col';
+  tdToggle.style.width = '44px';
+  tdToggle.style.textAlign = 'center';
+
+  const toggle = document.createElement('button');
+  const isIncluded = item.included !== false;
+  toggle.className = 'btn-toggle-row';
+  toggle.title = isIncluded ? 'Exclude from total' : 'Include in total';
+  toggle.textContent = isIncluded ? '●' : '○';
+  toggle.style.background = 'none';
+  toggle.style.border = 'none';
+  toggle.style.cursor = 'pointer';
+  toggle.style.fontSize = '1rem';
+  toggle.style.padding = '4px 8px';
+  toggle.style.color = isIncluded ? 'var(--accent)' : 'var(--border)';
+  toggle.style.transition = 'color .12s';
+  toggle.onclick = () => {
+    const i = currentBudget.data.debitItems[tr.dataset.idx];
+    if (!i) return;
+    i.included = i.included === false ? true : false;
+    const nowIncluded = i.included !== false;
+    toggle.textContent = nowIncluded ? '●' : '○';
+    toggle.title = nowIncluded ? 'Exclude from total' : 'Include in total';
+    toggle.style.color = nowIncluded ? 'var(--accent)' : 'var(--border)';
+    tr.style.opacity = nowIncluded ? '1' : '0.45';
+    updateDebitTotal();
+    scheduleSave();
+  };
+
+  tr.style.opacity = isIncluded ? '1' : '0.45';
+  tdToggle.appendChild(toggle);
+  tr.appendChild(tdToggle);
+
+  // Delete button
+  const tdDel = document.createElement('td');
+  tdDel.className = 'actions-col';
+  const btnDel = document.createElement('button');
+  btnDel.className = 'btn-delete-row';
+  btnDel.innerHTML = '×';
+  btnDel.title = 'Remove row';
+  btnDel.onclick = () => {
+    const i = parseInt(tr.dataset.idx);
+    currentBudget.data.debitItems.splice(i, 1);
+    tr.remove();
+    document.querySelectorAll('#debit-tbody tr').forEach((r, idx) => r.dataset.idx = idx);
+    updateDebitTotal();
+    scheduleSave();
+  };
+  tdDel.appendChild(btnDel);
+  tr.appendChild(tdDel);
+
+  return tr;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MODALS
+// ─────────────────────────────────────────────────────────────
+let modalCallback = null;
+
+function openModal(title, defaultVal, confirmLabel, confirmClass, cb) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-input').value = defaultVal;
+  document.getElementById('modal-confirm').textContent = confirmLabel;
+  document.getElementById('modal-confirm').className = 'btn-confirm ' + (confirmClass || '');
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  document.getElementById('modal-input').focus();
+  modalCallback = cb;
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  modalCallback = null;
+}
+
+document.getElementById('modal-cancel').onclick = closeModal;
+document.getElementById('modal-confirm').onclick = () => {
+  const val = document.getElementById('modal-input').value.trim();
+  if (modalCallback) modalCallback(val);
+  closeModal();
+};
+document.getElementById('modal-input').onkeydown = e => {
+  if (e.key === 'Enter') document.getElementById('modal-confirm').click();
+  if (e.key === 'Escape') closeModal();
+};
+document.getElementById('modal-overlay').onclick = e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+};
+
+function openRenameModal(id, name) {
+  openModal('Rename Budget', name, 'Rename', '', val => {
+    if (val) renameBudget(id, val);
+  });
+}
+
+function confirmDelete(id, name) {
+  openModal(`Delete "${name}"?`, '', 'Delete', 'danger', () => deleteBudget(id));
+  document.getElementById('modal-input').style.display = 'none';
+  // Restore on close
+  const origClose = modalCallback;
+  const origOnClose = closeModal;
+  // Patch close to restore input visibility
+  const patchedClose = () => {
+    document.getElementById('modal-input').style.display = '';
+    closeModal();
+  };
+  document.getElementById('modal-cancel').onclick = patchedClose;
+  document.getElementById('modal-overlay').onclick = e => {
+    if (e.target === document.getElementById('modal-overlay')) patchedClose();
+  };
+  document.getElementById('modal-confirm').onclick = () => {
+    deleteBudget(id);
+    patchedClose();
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  UTILS
+// ─────────────────────────────────────────────────────────────
+function parseNum(v) {
+  const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function parseBillCount(v) {
+  const n = parseInt(String(v).replace(/[^0-9\-]/g, ''), 10);
+  return isNaN(n) ? 0 : Math.max(0, n);
+}
+
+function fmt(n) {
+  return n.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function formatMoney(n) {
+  return '$' + fmt(n);
+}
+
+function formatBillCount(n) {
+  return String(parseBillCount(n));
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  BEFORE UNLOAD — flush any pending save
+// ─────────────────────────────────────────────────────────────
+window.addEventListener('beforeunload', e => {
+  if (saveTimer) {
+    flushSave();
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+</script>
+</body>
+</html>
