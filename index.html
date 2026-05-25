@@ -326,6 +326,10 @@
     overflow: visible;
     box-shadow: var(--shadow);
     border: 1px solid var(--border);
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 auto;
+    min-height: fit-content;
   }
 
   .section-header {
@@ -633,18 +637,213 @@
   .btn-confirm.danger { background: #c82a2a; }
 
   /* ─── Responsive ─────────────────────────────────────────── */
-  @media (max-width: 700px) {
-    #sidebar { position: fixed; left: -100%; z-index: 100; transition: left .25s; }
-    #sidebar.open { left: 0; }
-    #app { flex-direction: column; }
-    #main { width: 100%; }
-    .mobile-menu-btn { display: flex !important; }
+  @media (max-width: 960px) {
+    body {
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    #app {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+
+    #sidebar {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: -110%;
+      z-index: 100;
+      transition: left .25s ease;
+      width: min(86vw, 320px);
+      min-width: 0;
+      box-shadow: 0 12px 40px rgba(0,0,0,.22);
+    }
+
+    #sidebar.open {
+      left: 0;
+    }
+
+    body.menu-open {
+      overflow: hidden;
+    }
+
+    .sidebar-overlay {
+      display: block;
+    }
+
+    #main {
+      width: 100%;
+      height: auto;
+      min-height: 100vh;
+    }
+
+    #toolbar {
+      padding: 12px 14px;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: stretch;
+    }
+
+    #budget-name-input {
+      min-width: 0;
+      width: 100%;
+      max-width: none;
+      font-size: 1.1rem;
+    }
+
+    .toolbar-spacer {
+      display: none;
+    }
+
+    .btn-duplicate {
+      flex: 1 1 calc(50% - 5px);
+      min-width: 0;
+    }
+
+    .status-indicator {
+      width: 100%;
+      justify-content: flex-start;
+      font-size: .72rem;
+    }
+
+    #editor {
+      padding: 18px 14px 48px;
+      gap: 12px;
+    }
+
+    .section-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .grand-total-grid {
+      padding: 12px;
+      gap: 8px;
+    }
+
+    .grand-total-group {
+      gap: 8px;
+    }
+
+    .grand-total-row {
+      padding: 8px 10px;
+    }
+
+    .grand-total-row span,
+    .grand-total-row strong {
+      font-size: .72rem;
+    }
+
+    .grand-total-input {
+      font-size: .8rem;
+      padding: 5px 8px;
+    }
+
+    .section {
+      overflow: visible;
+    }
+
+    .budget-table {
+      display: block;
+      width: max-content;
+      min-width: 720px;
+      max-width: 100%;
+      table-layout: fixed;
+    }
+
+    .mobile-table-wrap {
+      max-height: 220px;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    .budget-table thead th,
+    .budget-table td {
+      font-size: .75rem;
+    }
+
+    .budget-table td.actions-col {
+      width: 42px;
+      padding: 0 6px;
+    }
+
+    .budget-item-actions {
+      display: flex !important;
+    }
+
+    .grand-total-grid {
+      padding: 16px;
+      gap: 10px;
+    }
+
+    .grand-total-group {
+      flex-direction: column;
+    }
+
+    .grand-total-row {
+      width: 100%;
+      padding: 12px;
+    }
+
+    .grand-total-input {
+      width: 100%;
+      max-width: none;
+    }
+
+    .mobile-menu-btn {
+      display: inline-flex !important;
+    }
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 90;
+    display: none;
+  }
+
+  .sidebar-overlay.visible {
+    display: block;
+  }
+
+  .sidebar-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .sidebar-close-btn {
+    border: 1px solid rgba(255,255,255,.12);
+    background: transparent;
+    color: var(--sidebar-tx);
+    border-radius: 999px;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    flex-shrink: 0;
   }
 
   .mobile-menu-btn {
     display: none;
-    background: none; border: none; cursor: pointer;
-    color: var(--tx-muted); padding: 4px; margin-right: 8px;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--tx-muted);
+    padding: 8px;
+    margin-right: 4px;
+    flex-shrink: 0;
   }
 
   input[type="date"].cell-input {
@@ -674,13 +873,19 @@
 </div>
 
 <!-- ─── App Shell ──────────────────────────────────────── -->
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
 <div id="app">
 
   <!-- Sidebar -->
   <aside id="sidebar">
     <div class="sidebar-header">
-      <h2><span style="color: var(--accent);">$</span> BudgetDesk</h2>
-      <div class="user-email" id="user-email"></div>
+      <div class="sidebar-header-row">
+        <div>
+          <h2><span style="color: var(--accent);">$</span> BudgetDesk</h2>
+          <div class="user-email" id="user-email"></div>
+        </div>
+        <button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Close menu">×</button>
+      </div>
     </div>
     <div class="sidebar-actions">
       <button class="btn-new" id="btn-new-budget">+ New Budget</button>
@@ -959,6 +1164,7 @@ async function createNewBudget() {
     }
   };
   const ref = await budgetsCol().add(data);
+  closeMobileMenu();
   loadBudget(ref.id);
 }
 
@@ -981,6 +1187,7 @@ async function loadBudget(id) {
 async function switchBudget(id) {
   if (currentBudget && currentBudget.id === id) return;
   if (saveTimer) { clearTimeout(saveTimer); await flushSave(); }
+  closeMobileMenu();
   loadBudget(id);
 }
 
@@ -1010,6 +1217,7 @@ async function duplicateBudget() {
     data: JSON.parse(JSON.stringify(currentBudget.data))
   };
   const ref = await budgetsCol().add(data);
+  closeMobileMenu();
   loadBudget(ref.id);
 }
 
@@ -1061,9 +1269,30 @@ document.getElementById('budget-name-input').oninput = e => {
   scheduleSave();
 };
 
-document.getElementById('mobile-menu-btn').onclick = () => {
-  document.getElementById('sidebar').classList.toggle('open');
-};
+function openMobileMenu() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebar-overlay').classList.add('visible');
+  document.body.classList.add('menu-open');
+}
+
+function closeMobileMenu() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('visible');
+  document.body.classList.remove('menu-open');
+}
+
+function toggleMobileMenu() {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar.classList.contains('open')) {
+    closeMobileMenu();
+  } else {
+    openMobileMenu();
+  }
+}
+
+document.getElementById('mobile-menu-btn').onclick = toggleMobileMenu;
+document.getElementById('sidebar-close-btn').onclick = closeMobileMenu;
+document.getElementById('sidebar-overlay').onclick = closeMobileMenu;
 
 document.getElementById('btn-export-png').onclick = () => runExport('png');
 document.getElementById('btn-export-pdf').onclick = () => runExport('pdf');
@@ -1185,6 +1414,7 @@ function renderEditor(data) {
   ed.appendChild(buildGrandTotalPanel());
   ed.appendChild(buildCashSection(data.cashItems));
   ed.appendChild(buildDebitSection(data.debitItems));
+  ed.scrollTop = 0;
 }
 
 function getCheckingBalance() {
@@ -1323,35 +1553,37 @@ function buildCashSection(items) {
       <span class="section-title">CASH</span>
       <span class="section-total" id="cash-total">$${fmt(totalAmt)}</span>
     </div>
-    <table class="budget-table" id="cash-table">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th class="num">Total</th>
-          <th class="num">$100</th>
-          <th class="num">$50</th>
-          <th class="num">$20</th>
-          <th class="num">$10</th>
-          <th class="num">$5</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="cash-tbody"></tbody>
-      <tfoot>
-        <tr class="cash-summary-row">
-          <th colspan="2" class="cash-summary-label">
-            Total bills
-            <button id="btn-export-bills" title="Export bills as PNG" style="background:none; border:none; color:var(--tx-muted); cursor:pointer; font-size:.75rem; padding:4px 6px; border-radius:var(--radius); transition:color .12s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--tx-muted)'">↓ PNG</button>
-          </th>
-          <td id="cash-summary-d100">0</td>
-          <td id="cash-summary-d50">0</td>
-          <td id="cash-summary-d20">0</td>
-          <td id="cash-summary-d10">0</td>
-          <td id="cash-summary-d5">0</td>
-          <td></td>
-        </tr>
-      </tfoot>
-    </table>
+    <div class="mobile-table-wrap">
+      <table class="budget-table" id="cash-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th class="num">Total</th>
+            <th class="num">$100</th>
+            <th class="num">$50</th>
+            <th class="num">$20</th>
+            <th class="num">$10</th>
+            <th class="num">$5</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cash-tbody"></tbody>
+        <tfoot>
+          <tr class="cash-summary-row">
+            <th colspan="2" class="cash-summary-label">
+              Total bills
+              <button id="btn-export-bills" title="Export bills as PNG" style="background:none; border:none; color:var(--tx-muted); cursor:pointer; font-size:.75rem; padding:4px 6px; border-radius:var(--radius); transition:color .12s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--tx-muted)'">↓ PNG</button>
+            </th>
+            <td id="cash-summary-d100">0</td>
+            <td id="cash-summary-d50">0</td>
+            <td id="cash-summary-d20">0</td>
+            <td id="cash-summary-d10">0</td>
+            <td id="cash-summary-d5">0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
     <div class="table-footer">
       <button class="btn-add-row" id="cash-add-row">+ Add Row</button>
     </div>`;
@@ -1566,18 +1798,20 @@ function buildDebitSection(items) {
       <span class="section-title">DEBIT</span>
       <span class="section-total" id="debit-total">$${fmt(totalAmt)}</span>
     </div>
-    <table class="budget-table" id="debit-table">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th class="num">Total</th>
-          <th>Date</th>
-          <th style="width:44px; text-align:center;">On</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="debit-tbody"></tbody>
-    </table>
+    <div class="mobile-table-wrap">
+      <table class="budget-table" id="debit-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th class="num">Total</th>
+            <th>Date</th>
+            <th style="width:44px; text-align:center;">On</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="debit-tbody"></tbody>
+      </table>
+    </div>
     <div class="table-footer">
       <button class="btn-add-row" id="debit-add-row">+ Add Row</button>
     </div>`;
