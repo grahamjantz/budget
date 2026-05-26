@@ -716,7 +716,13 @@
     .section-header {
       flex-direction: column;
       align-items: flex-start;
-      gap: 6px;
+      gap: 4px;
+      padding: 10px 12px 9px;
+    }
+
+    .cell-input {
+      padding: 12px 8px;
+      min-height: 44px;
     }
 
     .grand-total-grid {
@@ -749,20 +755,113 @@
     .budget-table {
       display: block;
       width: max-content;
-      min-width: 720px;
+      min-width: 640px;
       max-width: 100%;
       table-layout: fixed;
     }
 
     .mobile-table-wrap {
-      max-height: 220px;
-      overflow: auto;
+      max-height: none;
+      overflow-x: auto;
+      overflow-y: hidden;
       overscroll-behavior: contain;
+    }
+
+    #cash-table {
+      width: 100%;
+      min-width: 0;
+      table-layout: auto;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    #cash-table thead {
+      display: none;
+    }
+
+    #cash-table tbody {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #cash-table tbody tr {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      /* border-radius: 10px; */
+      background: var(--surface);
+      align-items: stretch;
+    }
+
+    #cash-table tbody tr td {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 0;
+      min-width: 0;
+    }
+
+    #cash-table tbody tr td::before {
+      content: attr(data-label);
+      display: block;
+      font-size: .65rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--tx-muted);
+      margin-bottom: 2px;
+    }
+
+    #cash-table tbody tr td.actions-col::before {
+      content: '';
+      display: none;
+    }
+
+    #cash-table tbody tr td:nth-child(1) {
+      flex: 1 1 calc(100% - 112px);
+      min-width: 0;
+    }
+
+    #cash-table tbody tr td:nth-child(2) {
+      flex: 0 0 92px;
+      text-align: right;
+    }
+
+    #cash-table tbody tr td:nth-child(3),
+    #cash-table tbody tr td:nth-child(4),
+    #cash-table tbody tr td:nth-child(5),
+    #cash-table tbody tr td:nth-child(6),
+    #cash-table tbody tr td:nth-child(7) {
+      flex: 1 1 64px;
+      min-width: 64px;
+    }
+
+    #cash-table tbody tr td.actions-col {
+      flex: 0 0 32px;
+      align-self: flex-start;
+      justify-content: center;
+      margin-left: auto;
+    }
+
+    #cash-table .cell-input {
+      width: 100%;
+      min-height: 42px;
+      padding: 10px 8px;
+    }
+
+    #cash-table .cell-input.num {
+      text-align: right;
     }
 
     .budget-table thead th,
     .budget-table td {
       font-size: .75rem;
+    }
+
+    .budget-table thead th {
+      padding: 9px 8px;
     }
 
     .budget-table td.actions-col {
@@ -1660,17 +1759,18 @@ function buildCashRow(item, idx) {
   tr.dataset.idx = idx;
 
   const fields = [
-    { key: 'name',  cls: '',    type: 'text'   },
-    { key: 'total', cls: 'num', type: 'currency' },
-    { key: 'd100',  cls: 'num', type: 'count' },
-    { key: 'd50',   cls: 'num', type: 'count' },
-    { key: 'd20',   cls: 'num', type: 'count' },
-    { key: 'd10',   cls: 'num', type: 'count' },
-    { key: 'd5',    cls: 'num', type: 'count' },
+    { key: 'name',  label: 'Item',  cls: '',    type: 'text'   },
+    { key: 'total', label: 'Total', cls: 'num', type: 'currency' },
+    { key: 'd100',  label: '$100',  cls: 'num', type: 'count' },
+    { key: 'd50',   label: '$50',   cls: 'num', type: 'count' },
+    { key: 'd20',   label: '$20',   cls: 'num', type: 'count' },
+    { key: 'd10',   label: '$10',   cls: 'num', type: 'count' },
+    { key: 'd5',    label: '$5',    cls: 'num', type: 'count' },
   ];
 
   fields.forEach(f => {
     const td = document.createElement('td');
+    td.dataset.label = f.label;
     const inp = document.createElement('input');
     inp.className = 'cell-input ' + f.cls;
     inp.type = 'text';
