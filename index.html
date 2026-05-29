@@ -140,6 +140,8 @@ body{font-family:var(--font-mono);background:var(--bg);color:var(--tx);height:10
 .budget-table td{padding:0;vertical-align:middle}
 .budget-table td.actions-col{width:36px;text-align:center;padding:0 4px}
 .budget-table tfoot .cash-summary-row td{padding:11px 12px;border-top:2px solid var(--border);background:var(--bg);font-size:.78rem;color:var(--tx);text-align:right;font-family:var(--font-mono)}
+.cash-summary-denom-label{display:block;font-size:.62rem;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:500;margin-bottom:2px}
+.cash-summary-denom-count{display:block;font-size:.85rem;font-weight:600;color:var(--tx)}
 .budget-table tfoot .cash-summary-row .cash-summary-label{border-top:2px solid var(--border);text-align:left;font-weight:600;color:var(--tx-muted);text-transform:uppercase;letter-spacing:.08em}
 
 /* ROW MISMATCH */
@@ -232,16 +234,16 @@ td.notes-cell{padding:0;border-top:none}
   .grand-total-group{flex-direction:column}
   .grand-total-row{width:100%;padding:12px}
   .grand-total-input{width:100%;max-width:none}
-  #cash-table{width:100%;min-width:0;table-layout:auto;border-collapse:separate;border-spacing:0}
+  #cash-table{display:block;width:100%}
   #cash-table thead{display:none}
-  #cash-table tbody{display:flex;flex-direction:column;gap:10px}
-  #cash-table tbody tr{display:flex;flex-wrap:wrap;gap:8px 10px;padding:12px;border-bottom:1px solid var(--border);background:var(--surface);align-items:stretch}
+  #cash-table tbody{display:flex;flex-direction:column;gap:10px;width:100%}
+  #cash-table tbody tr{display:flex;flex-wrap:wrap;gap:8px 10px;padding:12px 0px;border-bottom:1px solid var(--border);background:var(--surface);align-items:stretch;width:100%;box-sizing:border-box}
   #cash-table tbody tr td{display:flex;flex-direction:column;gap:4px;padding:0;min-width:0}
   #cash-table tbody tr td::before{content:attr(data-label);display:block;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--tx-muted);margin-bottom:2px}
   #cash-table tbody tr td.actions-col::before,#cash-table tbody tr td.drag-col::before{content:'';display:none}
   #cash-table tbody tr td:nth-child(2){flex:1 1 calc(100% - 120px);min-width:0}
   #cash-table tbody tr td:nth-child(3){flex:0 0 92px;text-align:right}
-  #cash-table tbody tr td:nth-child(4),#cash-table tbody tr td:nth-child(5),#cash-table tbody tr td:nth-child(6),#cash-table tbody tr td:nth-child(7),#cash-table tbody tr td:nth-child(8){flex:1 1 56px;min-width:56px}
+  #cash-table tbody tr td:nth-child(4),#cash-table tbody tr td:nth-child(5),#cash-table tbody tr td:nth-child(6),#cash-table tbody tr td:nth-child(7),#cash-table tbody tr td:nth-child(8){flex:1 1 0;min-width:0}
   #cash-table tbody tr td.actions-col,#cash-table tbody tr td.drag-col{flex:0 0 32px;align-self:flex-start;justify-content:center;margin-left:auto}
   #cash-table .cell-input{width:100%;min-height:42px;padding:10px 8px}
   .mobile-menu-btn{display:inline-flex!important}
@@ -730,11 +732,11 @@ function buildCashSection(items) {
               Total bills
               <button id="btn-export-bills" title="Export bills as PNG" style="background:none;border:none;color:var(--tx-muted);cursor:pointer;font-size:.75rem;padding:4px 6px;border-radius:var(--radius);transition:color .12s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--tx-muted)'">↓ PNG</button>
             </th>
-            <td id="cash-summary-d100">0</td>
-            <td id="cash-summary-d50">0</td>
-            <td id="cash-summary-d20">0</td>
-            <td id="cash-summary-d10">0</td>
-            <td id="cash-summary-d5">0</td>
+            <td id="cash-summary-d100"><span class="cash-summary-denom-label">$100</span><span class="cash-summary-denom-count">0</span></td>
+            <td id="cash-summary-d50"><span class="cash-summary-denom-label">$50</span><span class="cash-summary-denom-count">0</span></td>
+            <td id="cash-summary-d20"><span class="cash-summary-denom-label">$20</span><span class="cash-summary-denom-count">0</span></td>
+            <td id="cash-summary-d10"><span class="cash-summary-denom-label">$10</span><span class="cash-summary-denom-count">0</span></td>
+            <td id="cash-summary-d5"><span class="cash-summary-denom-label">$5</span><span class="cash-summary-denom-count">0</span></td>
             <td></td>
           </tr>
         </tfoot>
@@ -833,7 +835,7 @@ function updateCashTotal() { const t=getCashTotalValue(); const el=document.getE
 function updateCashBillSummary(section=document.getElementById('cash-section')) {
   if (!section||!currentBudget) return;
   const s = currentBudget.data.cashItems.reduce((a,i)=>{ a.d100+=parseBillCount(i.d100); a.d50+=parseBillCount(i.d50); a.d20+=parseBillCount(i.d20); a.d10+=parseBillCount(i.d10); a.d5+=parseBillCount(i.d5); return a; },{d100:0,d50:0,d20:0,d10:0,d5:0});
-  ['d100','d50','d20','d10','d5'].forEach(k=>{ const el=section.querySelector('#cash-summary-'+k); if(el)el.textContent=formatBillCount(s[k]); });
+  ['d100','d50','d20','d10','d5'].forEach(k=>{ const el=section.querySelector('#cash-summary-'+k); if(el){ const count=el.querySelector('.cash-summary-denom-count'); if(count)count.textContent=formatBillCount(s[k]); else el.textContent=formatBillCount(s[k]); } });
   // Re-check all rows for mismatches
   section.querySelectorAll('#cash-tbody tr').forEach(tr=>checkCashMismatch(tr));
 }
