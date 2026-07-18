@@ -10,6 +10,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet" />
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BudgetDesk">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' fill='%23c8572a'>$</text></svg>">
 <style>
 :root {
@@ -760,7 +764,7 @@ function buildCashSection(items) {
 
 function buildCashRow(item, idx) {
   const tr = document.createElement('tr');
-  tr.dataset.idx = idx; tr.draggable = true;
+  tr.dataset.idx = idx; tr.draggable = false;
 
   // Drag handle
   const tdDrag = document.createElement('td');
@@ -888,7 +892,7 @@ function buildDebitSection(items) {
 
 function buildDebitRow(item, idx) {
   const tr = document.createElement('tr');
-  tr.dataset.idx = idx; tr.draggable = true;
+  tr.dataset.idx = idx; tr.draggable = false;
   tr.style.opacity = item.included===false?'0.45':'1';
 
   // Drag handle
@@ -1001,8 +1005,18 @@ function moveRow(fromSection, toSection, idx) {
 
 // ─── Drag & Drop ──────────────────────────────────────────────
 function initDragSection(tbody, section) {
+  // Only arm native HTML5 drag when the press starts on the handle.
+  tbody.addEventListener('mousedown', e => {
+    if (!e.target.closest('.drag-handle')) return;
+    const tr = e.target.closest('tr'); if (!tr) return;
+    tr.draggable = true;
+  });
+  const disarm = () => { tbody.querySelectorAll('tr[draggable="true"]').forEach(r => r.draggable = false); };
+  tbody.addEventListener('mouseup', disarm);
+  document.addEventListener('mouseup', disarm);
   tbody.addEventListener('dragstart', e => {
     const tr = e.target.closest('tr'); if (!tr) return;
+    if (!e.target.closest('.drag-handle')) { e.preventDefault(); return; }
     dragSrcIdx = parseInt(tr.dataset.idx); dragSection = section;
     tr.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
@@ -1010,6 +1024,7 @@ function initDragSection(tbody, section) {
   tbody.addEventListener('dragend', e => {
     const tr = e.target.closest('tr'); if (tr) tr.classList.remove('dragging');
     tbody.querySelectorAll('tr').forEach(r => r.classList.remove('drag-over'));
+    disarm();
     dragSrcIdx = null; dragSection = null;
   });
   tbody.addEventListener('dragover', e => {
@@ -1033,6 +1048,7 @@ function initDragSection(tbody, section) {
   // Touch drag (basic)
   let touchItem=null, touchClone=null, touchSrcIdx=null;
   tbody.addEventListener('touchstart', e => {
+    if(!e.target.closest('.drag-handle')) return;
     const tr=e.target.closest('tr'); if(!tr) return;
     touchSrcIdx=parseInt(tr.dataset.idx);
     touchItem=tr;
