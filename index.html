@@ -240,8 +240,8 @@ td.notes-cell{padding:0;border-top:none}
   .grand-total-input{width:100%;max-width:none}
   #cash-table{display:block;width:100%}
   #cash-table thead{display:none}
-  #cash-table tbody{display:flex;flex-direction:column;gap:10px;width:100%}
-  #cash-table tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;padding:8px 8px;border-bottom:1px solid var(--border);background:var(--surface);width:100%;box-sizing:border-box}
+  #cash-table tbody{display:flex;flex-direction:column;gap:8px;width:100%}
+  #cash-table tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:3px 8px;padding:6px 8px;border-bottom:1px solid var(--border);background:var(--surface);width:100%;box-sizing:border-box}
   #cash-table tbody tr td{display:flex;flex-direction:row;align-items:center;gap:5px;padding:0;min-width:0}
   #cash-table tbody tr td::before{content:attr(data-label);display:block;flex:0 0 auto;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--tx-muted)}
   #cash-table tbody tr td.name-col::before,#cash-table tbody tr td.actions-col::before,#cash-table tbody tr td.drag-col::before{content:'';display:none}
@@ -250,9 +250,11 @@ td.notes-cell{padding:0;border-top:none}
   #cash-table tbody tr td.name-col{order:2;flex:1 1 auto;min-width:0}
   #cash-table tbody tr td.actions-col{order:3;flex:0 0 32px;width:32px;justify-content:center}
   #cash-table tbody tr td.total-col{order:4;flex:1 1 100%;justify-content:space-between}
-  #cash-table tbody tr td.bill-col{order:5;flex:1 1 17%;min-width:0;justify-content:space-between}
-  #cash-table tbody tr td.total-col .cell-input,#cash-table tbody tr td.bill-col .cell-input{flex:1 1 auto;min-width:0;width:auto;min-height:30px;padding:4px 2px}
-  #cash-table .cell-input{min-height:40px;padding:8px 6px}
+  #cash-table tbody tr td.bill-col{order:5;flex:0 0 auto;min-width:0;gap:3px;margin-right:11px;background:var(--bg);border-radius:5px;padding:3px 6px 3px 7px}
+  #cash-table tbody tr td.bill-col::before{color:var(--tx-muted);font-size:.62rem}
+  #cash-table tbody tr td.total-col .cell-input{flex:1 1 auto;min-width:0;width:auto;min-height:26px;padding:3px 2px}
+  #cash-table tbody tr td.bill-col .cell-input{flex:0 0 auto;width:16px;min-width:0;min-height:20px;padding:0;text-align:left}
+  #cash-table .cell-input{min-height:34px;padding:6px 6px}
   .mobile-menu-btn{display:inline-flex!important}
   .budget-item-menu-btn{display:block!important}
   .drag-handle{opacity:1}
