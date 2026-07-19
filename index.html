@@ -241,18 +241,21 @@ td.notes-cell{padding:0;border-top:none}
   #cash-table{display:block;width:100%}
   #cash-table thead{display:none}
   #cash-table tbody{display:flex;flex-direction:column;gap:10px;width:100%}
-  #cash-table tbody tr{display:flex;flex-wrap:wrap;gap:8px 10px;padding:12px 0px;border-bottom:1px solid var(--border);background:var(--surface);align-items:stretch;width:100%;box-sizing:border-box}
-  #cash-table tbody tr td{display:flex;flex-direction:column;gap:4px;padding:0;min-width:0}
-  #cash-table tbody tr td::before{content:attr(data-label);display:block;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--tx-muted);margin-bottom:2px}
-  #cash-table tbody tr td.actions-col::before,#cash-table tbody tr td.drag-col::before{content:'';display:none}
-  #cash-table tbody tr td:nth-child(2){flex:1 1 calc(100% - 120px);min-width:0}
-  #cash-table tbody tr td:nth-child(3){flex:0 0 92px;text-align:right}
-  #cash-table tbody tr td:nth-child(4),#cash-table tbody tr td:nth-child(5),#cash-table tbody tr td:nth-child(6),#cash-table tbody tr td:nth-child(7),#cash-table tbody tr td:nth-child(8){flex:1 1 0;min-width:0}
-  #cash-table tbody tr td.actions-col,#cash-table tbody tr td.drag-col{flex:0 0 32px;align-self:flex-start;justify-content:center;margin-left:auto}
-  #cash-table .cell-input{width:100%;min-height:42px;padding:10px 8px}
+  #cash-table tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:8px 8px;padding:10px 0px;border-bottom:1px solid var(--border);background:var(--surface);width:100%;box-sizing:border-box}
+  #cash-table tbody tr td{display:flex;flex-direction:row;align-items:center;gap:6px;padding:0;min-width:0}
+  #cash-table tbody tr td::before{content:attr(data-label);display:block;flex:0 0 auto;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--tx-muted)}
+  #cash-table tbody tr td.name-col::before,#cash-table tbody tr td.actions-col::before,#cash-table tbody tr td.drag-col::before{content:'';display:none}
+  #cash-table tbody tr td.drag-col{order:1;flex:0 0 0;width:0;opacity:0;pointer-events:none;overflow:hidden;justify-content:center;transition:flex-basis .2s ease,width .2s ease,opacity .2s ease}
+  #editor.reorder-mode #cash-table tbody tr td.drag-col{flex:0 0 24px;width:24px;opacity:1;pointer-events:auto}
+  #cash-table tbody tr td.name-col{order:2;flex:1 1 auto;min-width:0}
+  #cash-table tbody tr td.actions-col{order:3;flex:0 0 32px;width:32px;justify-content:center}
+  #cash-table tbody tr td.total-col{order:4;flex:1 1 100%;justify-content:space-between}
+  #cash-table tbody tr td.bill-col{order:5;flex:1 1 17%;min-width:0;justify-content:space-between}
+  #cash-table tbody tr td.total-col .cell-input,#cash-table tbody tr td.bill-col .cell-input{flex:1 1 auto;min-width:0;width:auto}
+  #cash-table .cell-input{min-height:40px;padding:8px 6px}
   .mobile-menu-btn{display:inline-flex!important}
   .budget-item-menu-btn{display:block!important}
-  .drag-handle{opacity:.5!important}
+  .drag-handle{opacity:1}
 }
 </style>
 </head>
@@ -462,6 +465,7 @@ async function loadBudget(id) {
   currentBudget.data.rentIncome = parseNum(currentBudget.data.rentIncome ?? 0);
   // Ensure notes field on debit items
   (currentBudget.data.debitItems||[]).forEach(i => { if(i.notes===undefined) i.notes=''; });
+  setReorderMode(false);
   document.getElementById('budget-name-input').value = currentBudget.name || '';
   renderEditor(currentBudget.data);
   updateLockUI();
@@ -784,6 +788,7 @@ function buildCashRow(item, idx) {
   ];
   fields.forEach(f => {
     const td = document.createElement('td'); td.dataset.label = f.label;
+    td.className = f.key==='name' ? 'name-col' : (f.key==='total' ? 'total-col' : 'bill-col');
     const inp = document.createElement('input');
     inp.className = 'cell-input '+f.cls; inp.type = 'text';
     inp.inputMode = f.key==='name'?'text':(f.type==='currency'?'decimal':'numeric');
@@ -965,9 +970,17 @@ function buildDebitRow(item, idx) {
 function updateDebitTotal() { const t=getDebitTotalValue(); const el=document.getElementById('debit-total'); if(el)el.textContent='$'+fmt(t); updateGrandTotal(); }
 
 // ─── Row context menu ─────────────────────────────────────────
+let reorderMode = false;
+function setReorderMode(active) {
+  reorderMode = active;
+  document.getElementById('editor')?.classList.toggle('reorder-mode', active);
+}
+
 function showRowMenu(e, section, idx) {
   e.stopPropagation();
   const items = [
+    { label: reorderMode ? '✓ Done Rearranging' : '↕ Rearrange Rows', action: () => setReorderMode(!reorderMode) },
+    { sep:true },
     section==='cash'
       ? { label:'→ Move to Debit', action:()=>moveRow('cash','debit',idx) }
       : { label:'→ Move to Cash',  action:()=>moveRow('debit','cash',idx) },
