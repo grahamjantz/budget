@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>BudgetDesk</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -670,7 +670,7 @@ function buildGrandTotalPanel() {
   rentInp.value  = formatMoney(getRentIncome());
 
   function wireInput(inp, setter) {
-    inp.onfocus = () => { inp.value = String(parseNum(inp.value)); };
+    inp.onfocus = () => { const v=parseNum(inp.value); inp.value = v===0?'':String(v); };
     inp.onblur  = () => { const v=parseNum(inp.value); inp.value=formatMoney(v); setter(v); updateGrandTotal(panel); scheduleSave(); };
     inp.oninput = () => { setter(parseNum(inp.value)); updateGrandTotal(panel); scheduleSave(); };
   }
@@ -792,11 +792,11 @@ function buildCashRow(item, idx) {
     if (f.key==='name') {
       inp.oninput = () => { const i=currentBudget.data.cashItems[tr.dataset.idx]; if(i) { i.name=inp.value; scheduleSave(); } };
     } else if (f.type==='currency') {
-      inp.onfocus = () => { inp.value=String(parseNum(inp.value)); };
+      inp.onfocus = () => { const v=parseNum(inp.value); inp.value=v===0?'':String(v); };
       inp.onblur  = () => { const v=parseNum(inp.value); inp.value=formatMoney(v); const i=currentBudget.data.cashItems[tr.dataset.idx]; if(i){i.total=v;} updateCashTotal(); checkCashMismatch(tr); scheduleSave(); };
       inp.oninput = () => { const i=currentBudget.data.cashItems[tr.dataset.idx]; if(i){i.total=parseNum(inp.value);} updateCashTotal(); scheduleSave(); };
     } else {
-      inp.onfocus = () => { inp.value=String(parseBillCount(inp.value)); };
+      inp.onfocus = () => { const v=parseBillCount(inp.value); inp.value=v===0?'':String(v); };
       inp.onblur  = () => { const v=parseBillCount(inp.value); inp.value=formatBillCount(v); const i=currentBudget.data.cashItems[tr.dataset.idx]; if(i){i[f.key]=v;} updateCashBillSummary(); checkCashMismatch(tr); scheduleSave(); };
       inp.oninput = () => { const i=currentBudget.data.cashItems[tr.dataset.idx]; if(i){i[f.key]=parseBillCount(inp.value);} updateCashBillSummary(); scheduleSave(); };
     }
@@ -912,7 +912,7 @@ function buildDebitRow(item, idx) {
   const totalInp = document.createElement('input');
   totalInp.className='cell-input num'; totalInp.type='text'; totalInp.inputMode='decimal';
   totalInp.value = formatMoney(item.total||0); totalInp.placeholder='$0';
-  totalInp.onfocus = () => { totalInp.value=String(parseNum(totalInp.value)); };
+  totalInp.onfocus = () => { const v=parseNum(totalInp.value); totalInp.value=v===0?'':String(v); };
   totalInp.onblur  = () => { const v=parseNum(totalInp.value); totalInp.value=formatMoney(v); const i=currentBudget.data.debitItems[tr.dataset.idx]; if(i){i.total=v;} updateDebitTotal(); scheduleSave(); };
   totalInp.oninput = () => { const i=currentBudget.data.debitItems[tr.dataset.idx]; if(i){i.total=parseNum(totalInp.value);} updateDebitTotal(); scheduleSave(); };
   tdTotal.appendChild(totalInp); tr.appendChild(tdTotal);
